@@ -1,0 +1,21 @@
+{
+  "name": "telegram-bot",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "dev": "nodemon index.js",
+    "start": "node index.js"
+  },
+  "keywords": [
+    "bot",
+    "telegram"
+  ],
+  "author": "Sultan Momynov",
+  "license": "MIT",
+  "dependencies": {
+    "config": "^3.3.0",
+    "node-telegram-bot-api": "^0.40.0",
+    "youtube-dl": "^3.0.2"
+  }
+}
