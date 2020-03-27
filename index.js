@@ -21,7 +21,7 @@ bot.on('message', (msg) => {
     bot.sendMessage(channel_id, url);
 
     const a = new Promise((resolve, reject) => {
-      console.log(`\nWorking...\n`);
+      console.log(`\nDownloading...\n`);
 
       const args = [
         '-x',
@@ -38,7 +38,7 @@ bot.on('message', (msg) => {
           throw err
         }
         console.log(out.join('\n'))
-        console.log(`\nDownload finished!\n`)
+        console.log(`\nDownload finished.`)
         resolve(out);
       })
     })
@@ -47,7 +47,10 @@ bot.on('message', (msg) => {
       let kek = data[0].split(" ")[1].replace(':', '.mp3')
       let file_name = './tmp/' + kek
       console.log('Sending audio...');
-      bot.sendAudio(channel_id, file_name)
+      bot.sendAudio(channel_id, file_name).then(() => {
+        console.log('Audio is delivered.')
+      })
+
     })
   }
 });
