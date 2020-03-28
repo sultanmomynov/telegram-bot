@@ -1,5 +1,9 @@
 # My files
-/config
+config/
+tmp/
+experiments/
+.vscode/
+*.mp3
 
 # Logs
 logs
