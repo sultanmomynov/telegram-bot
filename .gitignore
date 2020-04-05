@@ -3,6 +3,7 @@ config/
 tmp/
 experiments/
 .vscode/
+misc/
 *.mp3
 
 # Logs
