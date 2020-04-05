@@ -13,18 +13,21 @@ const bot = new TelegramBot(token, { polling: true });
 
 const youtube_link_regex = /(?:https?:\/\/)?(?:www\.)?youtu\.?be(?:\.com)?\/?.*(?:watch|embed)?(?:.*v=|v\/|\/)([\w\-_]+)\&?(feature.+)?(?:\?t=\d?\d?\d?)? : (.+)/
 
-
 const channel_id = config.get('channel_id')
-
 
 bot.onText(youtube_link_regex, (msg, match) => {
 
+  console.log(match)
   let url = 'https://www.youtube.com/watch?v=' + match[1]
-  
+
   // Metadata
+
+
   let artist = match[match.length - 1].split(" | ")[0].split(" - ")[0]
   let title = match[match.length - 1].split(" | ")[0].split(" - ")[1]
   let type_key = match[match.length - 1].split(" | ")[1]
+
+
 
   if (artist.includes('/') || title.includes('/')) {
     bot.sendMessage(msg.chat.id, 'Metadata cannot contain \'/\'.')
@@ -108,10 +111,11 @@ bot.onText(youtube_link_regex, (msg, match) => {
 
             fs.unlink(attach, (err) => {
               if (err) throw err;
-              console.log(`${new_path} is deleted`);
+              console.log(`${ attach } is deleted`);
             })
 
           }).then(() => {
+            console.log("Done");
             bot.sendMessage(msg.chat.id, 'Done.')
           })
         }
