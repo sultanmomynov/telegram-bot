@@ -4,11 +4,12 @@ process.env["NTBA_FIX_350"] = 1;
 // Requirements
 const TelegramBot = require('node-telegram-bot-api')
 const config = require('config')
-const youtubedl = require('youtube-dl')
 const token = config.get('token')
 const ffmetadata = require('ffmetadata')
 const fs = require('fs')
-const args = require('./modules/youtubedl-args')
+const deleteTempFiles = require('./modules/deleteTempFiles')
+const downloadAudio = require('./modules/youtubeDownloader')
+const writeMetadata = require('./modules/writeMetadata')
 
 const bot = new TelegramBot(token, {
   polling: true,
@@ -18,6 +19,8 @@ const bot = new TelegramBot(token, {
 const youtube_link_regex = /(?:https?:\/\/)?(?:www\.)?youtu\.?be(?:\.com)?\/?.*(?:watch|embed)?(?:.*v=|v\/|\/)([\w\-_]+)\&?(feature.+)?(?:\?t=\d?\d?\d?)? : (.+)/
 const linksArray = fs.readFileSync('./misc/list.txt').toString().split("\n");
 
+
+bot.on("polling_error", (msg) => console.log(msg));
 
 bot.on('message', msg => {
 
@@ -33,22 +36,17 @@ bot.on('message', msg => {
 
       match = message.split(youtube_link_regex)
 
-      console.log(match)
-
       // Metadata
 
       let video_id = match[1]
       let extra = match[3]
       let url = 'https://www.youtube.com/watch?v=' + video_id
-      let artist = extra.split(" | ")[0].split(" - ")[0]
-      let title = extra.split(" | ")[0].split(" - ")[1]
-      let type_key = extra.split(" | ")[1]
+
 
 
       if (extra.includes('/')) {
         bot.sendMessage(bot_chat_id, 'Metadata cannot contain \'/\'.')
         throw console.error('Metadata cannot contain \'/\'.')
-
       }
 
       if (!extra.includes(' - ')) {
@@ -61,72 +59,64 @@ bot.on('message', msg => {
         throw console.error('No metadata priveded')
       }
 
-      let gachi_metadata = {
-        artist: '♂ ' + artist,
-        title: title + ' ♂',
-        album: 'Gachimuchi'
-      }
 
-      let metadata = {
-        artist: artist,
-        title: title
-      }
+      downloadAudio(url).then(() => {
 
-      console.log(`\nDownloading...\n`);
+        let artist = extra.split(" | ")[0].split(" - ")[0]
+        let title = extra.split(" | ")[0].split(" - ")[1]
+        let type_key = extra.split(" | ")[1]
 
-      youtubedl.exec(url, args, {}, (err, out) => {
+        let old_path = './tmp/' + video_id + '.mp3'
+        let new_path = './tmp/' + artist + ' - ' + title + '.mp3'
+        let attach = './tmp/' + video_id + '.jpg'
 
-        if (err) {
-          bot.sendMessage(bot_chat_id, 'Error occured. Try again')
-          throw console.error(err)
-        } else {
-          bot.sendMessage(channel_id, url);
-          console.log(out.join('\n'))
-          console.log(`\nDownload finished.`)
+        let gachi_metadata = {
+          artist: '♂ ' + artist,
+          title: title + ' ♂',
+          album: 'Gachimuchi'
+        }
 
-          let old_path = './tmp/' + video_id + '.mp3'
-          let new_path = './tmp/' + artist + ' - ' + title + '.mp3'
-          let attach = './tmp/' + video_id + '.jpg'
+        let metadata = {
+          artist: artist,
+          title: title
+        }
 
-          fs.rename(old_path, new_path, () => {
+        fs.rename(old_path, new_path, () => {
 
-            let options = {
-              attachments: [attach]
-            }
+          let options = {
+            attachments: [attach]
+          }
 
-            if (type_key == 'GACHI' || type_key == 'gachi' || type_key == 'Gachi') {
-              metadata = gachi_metadata
-            }
+          if (type_key == 'GACHI' || type_key == 'gachi' || type_key == 'Gachi') {
+            metadata = gachi_metadata
+          }
 
-            ffmetadata.write(new_path, metadata, options, (err) => {
+          ffmetadata.write(new_path, metadata, options, (err) => {
 
-              if (err) throw err
+            if (err) throw err
 
-              console.log('Metadata written.');
-              console.log('Sending audio...');
+            console.log('Sending audio...');
 
-              bot.sendAudio(channel_id, fs.createReadStream(new_path)).then(() => {
+            bot.sendMessage(channel_id, url)
+              .then(() => {
 
-                console.log('Audio is delivered.')
+                bot.sendAudio(channel_id, fs.createReadStream(new_path)).then(() => {
 
-                fs.unlink(new_path, (err) => {
-                  if (err) throw err;
-                  console.log(`File is deleted`);
-                });
+                  console.log('Audio is delivered.')
 
-                fs.unlink(attach, (err) => {
-                  if (err) throw err;
-                  console.log(`Artwork is deleted`);
+                  deleteTempFiles(new_path, attach);
+
                 })
+                  .then(() => {
+                    bot.sendMessage(bot_chat_id, 'Done.')
+                  })
 
-              }).then(() => {
-                bot.sendMessage(bot_chat_id, 'Done.')
               })
 
-            })
 
           })
-        }
+
+        })
       })
       break;
 
@@ -138,11 +128,15 @@ bot.on('message', msg => {
     case message == '/random':
       let item = linksArray[Math.floor(Math.random() * linksArray.length)]
       bot.sendMessage(bot_chat_id, item)
-      console.log('random command triggered')
+      console.log('/random command triggered')
+      break;
+
+    case message == '/ping':
+      bot.sendMessage(bot_chat_id, 'pong!')
       break;
 
     default:
-      bot.sendMessage(bot_chat_id, 'Command unknown')
+      bot.sendMessage(bot_chat_id, 'Unknown command')
   }
 
 })

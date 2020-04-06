@@ -14,7 +14,7 @@
   "author": "Sultan Momynov",
   "license": "MIT",
   "dependencies": {
-    "config": "^3.3.0",
+    "config": "^3.3.1",
     "ffmetadata": "^1.6.0",
     "node-telegram-bot-api": "^0.40.0",
     "youtube-dl": "^3.0.2"
