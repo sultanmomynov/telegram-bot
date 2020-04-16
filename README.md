@@ -10,8 +10,8 @@ YouTube videos to MP3 converter bot
 ```json
 {
   "token": "<BOT_TOKEN>",
-  "channel_id": "<CHANNEL_ID>", // for admin
-  "admins": [array of userIds] // 
+  "channel_id": "<CHANNEL_ID>",
+  "admins": []
 }
 ```
 
