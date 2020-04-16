@@ -23,7 +23,10 @@ const bot = new TelegramBot(token, {
 const admins = config.get('admins')
 let channel_id = config.get('channel_id')
 
-bot.on('polling_error', (msg) => console.log(msg));
+bot.on('polling_error', (msg) => {
+  bot.sendMessage(helper.getChatId(msg), 'Error occured')
+  console.log(msg);
+})
 
 // Messages logger
 bot.on('message', msg => {
@@ -117,10 +120,18 @@ bot.on('callback_query', query => {
 bot.onText(/^(.*) (-|–) (.*)$/, (msg, match) => {
 
   bot_chat_id = helper.getChatId(msg)
+  console.log(match)
 
-  if (match.includes('/')) {
-    bot.sendMessage(bot_chat_id, 'Metadata cannot contain \'/\'. Try again.')
-    throw new Error('Metadata cannot contain \'/\'.')
+  if (msg.text.includes('/')) {
+    bot.sendMessage(bot_chat_id, `Metadata cannot contain */* symbol. Try again.`)
+    throw new Error('Unallowed character in metadata')
+  }
+
+  if (msg.text.includes('♂')) {
+    bot.sendMessage(bot_chat_id, `Don't use *♂* in metadata.`, {
+      parse_mode: 'Markdown'
+    })
+    throw new Error('Unallowed character in metadata')
   }
 
   if (video_id === undefined) {
