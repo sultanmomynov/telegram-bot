@@ -1,7 +1,7 @@
 # My files
 config/
 tmp/
-experiments/
+dev/
 .vscode/
 misc/
 *.mp3
