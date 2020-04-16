@@ -13,6 +13,7 @@ const chalk = require('chalk')
 const logger = require('./modules/logger')
 const deleteTempFiles = require('./modules/deleteTempFiles')
 const linksArray = fs.readFileSync(__dirname + '/../misc/list.txt').toString().split("\n");
+const readLastLines = require('read-last-lines');
 
 helper.logStart()
 
@@ -39,6 +40,27 @@ bot.onText(/\/start/, msg => {
   bot.sendMessage(helper.getChatId(msg), helper.greet(msg), {
     parse_mode: 'Markdown'
   })
+})
+
+bot.onText(/\/logs( \d+)?/, (msg, match) => {
+  let chat_id = helper.getChatId(msg)
+
+  if (admins.includes(msg.from.id)) {
+    let num_of_lines
+    match[1] === undefined ? num_of_lines = 10 : num_of_lines = match[1]
+    readLastLines.read(__dirname + '/logs', num_of_lines)
+      .then((lines) => {
+        bot.sendMessage(chat_id, `<strong>Showing last ${ num_of_lines } log lines</strong>:\n\n${ lines }`, {
+          parse_mode: 'HTML'
+        })
+          .catch(err => {
+            console.log(err)
+            bot.sendMessage(chat_id, `*ERROR* ${ err.response.body.description }`, {
+              parse_mode: 'Markdown'
+            })
+          })
+      })
+  } else return
 })
 
 bot.onText(/\/random/, msg => {
@@ -95,7 +117,12 @@ bot.on('callback_query', query => {
           let attach = './tmp/' + video_id + '.jpg'
 
           bot.sendAudio(chat_id, fs.createReadStream(path))
-            .catch((err) => console.error(err))
+            .catch((err) => {
+              console.log(err)
+              bot.sendMessage(chat_id, `*ERROR* ${ err.response.body.description }`, {
+                parse_mode: 'Markdown'
+              })
+            })
             .then(() => {
               deleteTempFiles(path, attach)
               bot.deleteMessage(chat_id, query.message.message_id)
@@ -189,9 +216,14 @@ bot.onText(/^(.*) (-|–) (.*)$/, (msg, match) => {
               .then(() => {
 
                 bot.sendAudio(audioChatId, fs.createReadStream(new_path))
-                  .catch((err) => console.error(err))
+                  .catch((err) => {
+                    console.log(err)
+                    bot.sendMessage(chat_id, `*ERROR* ${ err.response.body.description }`, {
+                      parse_mode: 'Markdown'
+                    })
+                  })
                   .then(() => {
-                    
+
                     deleteTempFiles(new_path, attach)
                     console.log(`[${ helper.getDate() }] Audio is delivered.`)
                     bot.deleteMessage(bot_chat_id, msg.message_id)

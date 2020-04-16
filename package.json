@@ -20,6 +20,7 @@
     "get-youtube-id": "^1.0.1",
     "node-logger": "^0.0.1",
     "node-telegram-bot-api": "^0.40.0",
+    "read-last-lines": "^1.7.2",
     "youtube-dl": "^3.0.2"
   },
   "devDependencies": {
