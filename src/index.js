@@ -24,7 +24,6 @@ const admins = config.get('admins')
 let channel_id = config.get('channel_id')
 
 bot.on('polling_error', (msg) => {
-  bot.sendMessage(helper.getChatId(msg), 'Error occured')
   console.log(msg);
 })
 
