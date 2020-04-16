@@ -12,6 +12,7 @@ const helper = require('./modules/helper')
 const chalk = require('chalk')
 const logger = require('./modules/logger')
 const deleteTempFiles = require('./modules/deleteTempFiles')
+const linksArray = fs.readFileSync(__dirname + '/../misc/list.txt').toString().split("\n");
 
 helper.logStart()
 
@@ -38,6 +39,11 @@ bot.onText(/\/start/, msg => {
   bot.sendMessage(helper.getChatId(msg), helper.greet(msg), {
     parse_mode: 'Markdown'
   })
+})
+
+bot.onText(/\/random/, msg => {
+  let item = linksArray[Math.floor(Math.random() * linksArray.length)]
+  bot.sendMessage(helper.getChatId(msg), item)
 })
 
 bot.onText(/\/dl/, msg => {
