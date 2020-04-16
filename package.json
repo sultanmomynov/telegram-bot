@@ -2,10 +2,10 @@
   "name": "telegram-bot",
   "version": "1.0.0",
   "description": "",
-  "main": "index.js",
+  "main": "src/index.js",
   "scripts": {
-    "prod": "NODE_ENV=production node index.js",
-    "dev": "NODE_ENV=development nodemon index.js"
+    "start": "NODE_ENV=default node src/index.js",
+    "dev": "NODE_ENV=dev nodemon src/index.js"
   },
   "keywords": [
     "bot",
@@ -14,9 +14,15 @@
   "author": "Sultan Momynov",
   "license": "MIT",
   "dependencies": {
-    "config": "^3.3.0",
+    "chalk": "^4.0.0",
+    "config": "^3.3.1",
     "ffmetadata": "^1.6.0",
+    "get-youtube-id": "^1.0.1",
+    "node-logger": "^0.0.1",
     "node-telegram-bot-api": "^0.40.0",
     "youtube-dl": "^3.0.2"
+  },
+  "devDependencies": {
+    "nodemon": "^2.0.3"
   }
 }
