@@ -12,6 +12,8 @@ const helper = require('./modules/helper')
 const chalk = require('chalk')
 const logger = require('./modules/logger')
 const deleteTempFiles = require('./modules/deleteTempFiles')
+const linksArray = fs.readFileSync(__dirname + '/../misc/list.txt').toString().split("\n");
+const readLastLines = require('read-last-lines');
 
 helper.logStart()
 
@@ -19,6 +21,9 @@ const bot = new TelegramBot(token, {
   polling: true,
   filepath: false
 })
+
+let video_id
+let type_flag
 
 const admins = config.get('admins')
 let channel_id = config.get('channel_id')
@@ -38,6 +43,33 @@ bot.onText(/\/start/, msg => {
   bot.sendMessage(helper.getChatId(msg), helper.greet(msg), {
     parse_mode: 'Markdown'
   })
+})
+
+bot.onText(/\/logs( \d+)?/, (msg, match) => {
+  let chat_id = helper.getChatId(msg)
+
+  if (admins.includes(msg.from.id)) {
+    let num_of_lines
+    match[1] === undefined ? num_of_lines = 10 : num_of_lines = match[1]
+    readLastLines.read(__dirname + '/logs', num_of_lines)
+      .then((lines) => {
+        bot.sendMessage(chat_id, `<strong>Showing last ${ num_of_lines } log lines</strong>:\n\n${ lines }`, {
+          parse_mode: 'HTML',
+          disable_web_page_preview: true
+        })
+          .catch(err => {
+            console.log(err)
+            bot.sendMessage(chat_id, `*ERROR* ${ err.response.body.description }`, {
+              parse_mode: 'Markdown'
+            })
+          })
+      })
+  } else return
+})
+
+bot.onText(/\/random/, msg => {
+  let item = linksArray[Math.floor(Math.random() * linksArray.length)]
+  bot.sendMessage(helper.getChatId(msg), item)
 })
 
 bot.onText(/\/dl/, msg => {
@@ -89,12 +121,19 @@ bot.on('callback_query', query => {
           let attach = './tmp/' + video_id + '.jpg'
 
           bot.sendAudio(chat_id, fs.createReadStream(path))
-            .catch((err) => console.error(err))
+            .catch((err) => {
+              console.log(err)
+              bot.sendMessage(chat_id, `*ERROR* ${ err.response.body.description }`, {
+                parse_mode: 'Markdown'
+              })
+            })
             .then(() => {
               deleteTempFiles(path, attach)
               bot.deleteMessage(chat_id, query.message.message_id)
               bot.deleteMessage(chat_id, query.message.message_id + 1)
               console.log(`[${ helper.getDate() }] Audio is delivered.`)
+              video_id = undefined
+              type_flag = undefined
             })
         })
       type_flag = 'normal'
@@ -119,7 +158,6 @@ bot.on('callback_query', query => {
 bot.onText(/^(.*) (-|–) (.*)$/, (msg, match) => {
 
   bot_chat_id = helper.getChatId(msg)
-  console.log(match)
 
   if (msg.text.includes('/')) {
     bot.sendMessage(bot_chat_id, `Metadata cannot contain */* symbol. Try again.`)
@@ -183,9 +221,14 @@ bot.onText(/^(.*) (-|–) (.*)$/, (msg, match) => {
               .then(() => {
 
                 bot.sendAudio(audioChatId, fs.createReadStream(new_path))
-                  .catch((err) => console.error(err))
+                  .catch((err) => {
+                    console.log(err)
+                    bot.sendMessage(chat_id, `*ERROR* ${ err.response.body.description }`, {
+                      parse_mode: 'Markdown'
+                    })
+                  })
                   .then(() => {
-                    
+
                     deleteTempFiles(new_path, attach)
                     console.log(`[${ helper.getDate() }] Audio is delivered.`)
                     bot.deleteMessage(bot_chat_id, msg.message_id)
