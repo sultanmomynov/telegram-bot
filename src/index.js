@@ -22,6 +22,9 @@ const bot = new TelegramBot(token, {
   filepath: false
 })
 
+let video_id
+let type_flag
+
 const admins = config.get('admins')
 let channel_id = config.get('channel_id')
 
@@ -51,7 +54,8 @@ bot.onText(/\/logs( \d+)?/, (msg, match) => {
     readLastLines.read(__dirname + '/logs', num_of_lines)
       .then((lines) => {
         bot.sendMessage(chat_id, `<strong>Showing last ${ num_of_lines } log lines</strong>:\n\n${ lines }`, {
-          parse_mode: 'HTML'
+          parse_mode: 'HTML',
+          disable_web_page_preview: true
         })
           .catch(err => {
             console.log(err)
@@ -128,6 +132,8 @@ bot.on('callback_query', query => {
               bot.deleteMessage(chat_id, query.message.message_id)
               bot.deleteMessage(chat_id, query.message.message_id + 1)
               console.log(`[${ helper.getDate() }] Audio is delivered.`)
+              video_id = undefined
+              type_flag = undefined
             })
         })
       type_flag = 'normal'
@@ -152,7 +158,6 @@ bot.on('callback_query', query => {
 bot.onText(/^(.*) (-|–) (.*)$/, (msg, match) => {
 
   bot_chat_id = helper.getChatId(msg)
-  console.log(match)
 
   if (msg.text.includes('/')) {
     bot.sendMessage(bot_chat_id, `Metadata cannot contain */* symbol. Try again.`)
