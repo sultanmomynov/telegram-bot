@@ -36,7 +36,7 @@ bot.on('polling_error', (msg) => {
 bot.on('message', msg => {
   event = `${ msg.from.username }: ${ msg.text }`
   console.log(chalk.cyan(`[${ helper.getDate() }] ${ event }`))
-  logger.log(event)
+  // logger.log(event)
 })
 
 bot.onText(/\/start/, msg => {
@@ -53,12 +53,11 @@ bot.onText(/\/logs( \d+)?/, (msg, match) => {
     match[1] === undefined ? num_of_lines = 10 : num_of_lines = match[1]
     readLastLines.read(__dirname + '/logs', num_of_lines)
       .then((lines) => {
-        bot.sendMessage(chat_id, `<strong>Showing last ${ num_of_lines } log lines</strong>:\n\n${ lines }`, {
-          parse_mode: 'HTML',
+        bot.sendMessage(chat_id, `Showing last ${ num_of_lines } log lines:\n\n${ lines }`, {
           disable_web_page_preview: true
         })
           .catch(err => {
-            console.log(err)
+            console.log(err.response.body.description)
             bot.sendMessage(chat_id, `*ERROR* ${ err.response.body.description }`, {
               parse_mode: 'Markdown'
             })
@@ -104,7 +103,7 @@ bot.on('callback_query', query => {
 
   event = `${ query.message.chat.username }: ${ query.data } (callback_query)`
   console.log(chalk.cyan(`[${ helper.getDate() }] ${ event }`))
-  logger.log(event)
+  // logger.log(event)
 
   let chat_id = helper.getChatId(query)
 
