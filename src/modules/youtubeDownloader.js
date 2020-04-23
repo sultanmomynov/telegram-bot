@@ -5,7 +5,7 @@ module.exports = function downloadFile(url) {
   
   console.log(`[${helper.getDate()}] Downloading...\n`);
 
-  args = [
+  const args = [
     '-x',
     '--audio-format',
     'mp3',
@@ -18,19 +18,15 @@ module.exports = function downloadFile(url) {
     '--metadata-from-title',
     '(?P<artist>.+?) - (?P<title>.+)'
   ]
-
+  
   return new Promise((resolve, reject) => {
     youtubedl.exec(url, args, {}, (err, out) => {
 
       if (err) {
-        reject();
+        reject(err);
         throw console.error(err)
       } else {
-        console.group()
-        console.log(out.join('\n'))
-        console.groupEnd()
-        console.log(`\n[${helper.getDate()}] Download finished.`)
-        resolve();
+        resolve(out);
       }
     })
   })
