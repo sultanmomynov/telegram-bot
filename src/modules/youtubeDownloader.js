@@ -16,7 +16,8 @@ module.exports = function downloadFile(url) {
     './config/cookies.txt',
     '--add-metadata',
     '--metadata-from-title',
-    '(?P<artist>.+?) - (?P<title>.+)'
+    '(?P<artist>.+?) - (?P<title>.+)',
+    '--rm-cache-dir'
   ]
 
   return new Promise((resolve, reject) => {
@@ -24,13 +25,12 @@ module.exports = function downloadFile(url) {
 
       if (err) {
         reject(err);
-        throw console.error(err)
       } else {
         console.group()
         console.log(out.join('\n'))
         console.groupEnd()
         console.log(`\n[${helper.getDate()}] Download finished.`)
-        resolve(out);
+        resolve();
       }
     })
   })

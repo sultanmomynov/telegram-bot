@@ -138,7 +138,10 @@ bot.on('callback_query', query => {
               typeFlag = undefined
             })
         })
-        .catch((err) => console.error(err))
+        .catch((err) => {
+          console.log(err)
+          bot.sendMessage(chatId, err.stderr)
+        })
 
       typeFlag = 'normal'
       break;
@@ -167,6 +170,7 @@ bot.onText(/^(.*) (-|–) (.*)$/, (msg, match) => {
 
   const botChatId = helper.getChatId(msg)
 
+  
   if (msg.text.includes('/')) {
     bot.sendMessage(botChatId, `Metadata cannot contain */* symbol. Try again.`)
     throw new Error('Unallowed character in metadata')
@@ -182,7 +186,7 @@ bot.onText(/^(.*) (-|–) (.*)$/, (msg, match) => {
   if (videoId === undefined) {
 
     bot.sendMessage(botChatId, 'Provide a link first')
-    console.error(`[${ helper.getDate() }] No link`)
+    console.log(`[${ helper.getDate() }] No link`)
 
   } else {
     bot.sendMessage(botChatId, helper.working_message)
@@ -211,6 +215,7 @@ bot.onText(/^(.*) (-|–) (.*)$/, (msg, match) => {
 
         const oldPath = `./tmp/${ videoId }.mp3`
         const newPath = `./tmp/${ artist } - ${ title }.mp3`
+        
         const artwork = `./tmp/${ videoId }.jpg`
 
         fs.rename(oldPath, newPath, () => {
@@ -256,6 +261,9 @@ bot.onText(/^(.*) (-|–) (.*)$/, (msg, match) => {
           })
         })
       })
-      .catch((e) => console.error(e))
+      .catch((e) => {
+        console.log(e)
+        bot.sendMessage(botChatId, e)
+      })
   }
 })
