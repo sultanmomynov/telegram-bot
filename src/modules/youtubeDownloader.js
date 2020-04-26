@@ -2,8 +2,8 @@ const youtubedl = require('youtube-dl')
 const helper = require('./helper')
 
 module.exports = function downloadFile(url) {
-  
-  console.log(`[${helper.getDate()}] Downloading...\n`);
+
+  console.log(`[${ helper.getDate() }] Downloading...\n`);
 
   const args = [
     '-x',
@@ -18,7 +18,7 @@ module.exports = function downloadFile(url) {
     '--metadata-from-title',
     '(?P<artist>.+?) - (?P<title>.+)'
   ]
-  
+
   return new Promise((resolve, reject) => {
     youtubedl.exec(url, args, {}, (err, out) => {
 
@@ -26,6 +26,10 @@ module.exports = function downloadFile(url) {
         reject(err);
         throw console.error(err)
       } else {
+        console.group()
+        console.log(out.join('\n'))
+        console.groupEnd()
+        console.log(`\n[${helper.getDate()}] Download finished.`)
         resolve(out);
       }
     })

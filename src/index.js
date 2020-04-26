@@ -138,6 +138,8 @@ bot.on('callback_query', query => {
               typeFlag = undefined
             })
         })
+        .catch((err) => console.error(err))
+
       typeFlag = 'normal'
       break;
     }
@@ -205,12 +207,7 @@ bot.onText(/^(.*) (-|–) (.*)$/, (msg, match) => {
     }
 
     downloadAudio(url)
-      .then(out => {
-
-        console.group()
-        console.log(out.join('\n'))
-        console.groupEnd()
-        console.log(`\n[${ helper.getDate() }] Download finished.`)
+      .then(() => {
 
         const oldPath = `./tmp/${ videoId }.mp3`
         const newPath = `./tmp/${ artist } - ${ title }.mp3`
