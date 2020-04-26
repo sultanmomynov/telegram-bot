@@ -1,10 +1,11 @@
 const fs = require('fs')
+
 module.exports = {
   log(event) {
 
-    log_message = `[${new Date().toLocaleString()}] ${event}\n`
-  
-    fs.appendFile(__dirname + '/../logs', log_message, (err) => {
+    const logMessage = `[${ new Date().toLocaleString() }] ${ event }\n`
+
+    fs.appendFile(`${ __dirname }'/../logs`, logMessage, (err) => {
       if (err) throw err;
     });
   }

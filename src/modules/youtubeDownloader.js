@@ -2,10 +2,10 @@ const youtubedl = require('youtube-dl')
 const helper = require('./helper')
 
 module.exports = function downloadFile(url) {
-  
-  console.log(`[${helper.getDate()}] Downloading...\n`);
 
-  args = [
+  console.log(`[${ helper.getDate() }] Downloading...\n`);
+
+  const args = [
     '-x',
     '--audio-format',
     'mp3',
@@ -23,14 +23,14 @@ module.exports = function downloadFile(url) {
     youtubedl.exec(url, args, {}, (err, out) => {
 
       if (err) {
-        reject();
+        reject(err);
         throw console.error(err)
       } else {
         console.group()
         console.log(out.join('\n'))
         console.groupEnd()
         console.log(`\n[${helper.getDate()}] Download finished.`)
-        resolve();
+        resolve(out);
       }
     })
   })
