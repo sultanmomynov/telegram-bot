@@ -36,9 +36,7 @@ bot.on('polling_error', (msg) => {
 
 // Messages logger
 bot.on('message', msg => {
-  const event = `${ msg.from.username }: ${ msg.text }`
-  console.log(chalk.cyan(`[${ helper.getDate() }] ${ event }`))
-  // logger.log(event)
+  console.log(chalk.cyan(`[${ helper.getDate() }] ${ helper.getEvent(msg) }`))
 })
 
 bot.onText(/\/start/, msg => {
@@ -103,9 +101,7 @@ bot.onText(/https?(.+)/, msg => {
 
 bot.on('callback_query', query => {
 
-  const event = `${ query.message.chat.username }: ${ query.data } (callback_query)`
-  console.log(chalk.cyan(`[${ helper.getDate() }] ${ event }`))
-  // logger.log(event)
+  console.log(chalk.cyan(`[${ helper.getDate() }] ${ helper.getEvent(query) }`))
 
   const chatId = helper.getChatId(query)
 
@@ -169,7 +165,7 @@ bot.onText(/^(.*) (-|–) (.*)$/, (msg, match) => {
 
   const botChatId = helper.getChatId(msg)
 
-  
+
   if (msg.text.includes('/')) {
     bot.sendMessage(botChatId, `Metadata cannot contain */* symbol. Try again.`)
     throw new Error('Unallowed character in metadata')
@@ -214,7 +210,7 @@ bot.onText(/^(.*) (-|–) (.*)$/, (msg, match) => {
 
         const oldPath = `./tmp/${ videoId }.mp3`
         const newPath = `./tmp/${ artist } - ${ title }.mp3`
-        
+
         const artwork = `./tmp/${ videoId }.jpg`
 
         fs.rename(oldPath, newPath, () => {
@@ -227,7 +223,7 @@ bot.onText(/^(.*) (-|–) (.*)$/, (msg, match) => {
 
             let audioChatId
             if (typeFlag === 'gachi') audioChatId = channelId
-            audioChatId = msg.chat.id
+            else audioChatId = msg.chat.id
 
             bot.sendMessage(audioChatId, url)
               .then(() => {

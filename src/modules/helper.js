@@ -13,6 +13,9 @@ module.exports = {
   getDate() {
     return new Date().toLocaleString()
   },
+  getEvent(obj) {
+    return obj.data === undefined ? `${ obj.from.username } (${ obj.from.first_name }): ${ obj.text }` : `${ obj.message.chat.username } (${ obj.from.first_name }): ${ obj.data } (callback_query)`
+  },
   working_message: 'Sending file..',
   ask_link_message: `Give me a YouTube link.\nYou can write *@vid* to find video\nExample: *@vid Coldplay*`,
   ask_tags_message: `Need custom meta tags?`,
