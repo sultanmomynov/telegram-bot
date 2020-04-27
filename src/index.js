@@ -3,8 +3,6 @@ process.env.NTBA_FIX_350 = 1;
 // Requirements
 const TelegramBot = require('node-telegram-bot-api')
 const config = require('config')
-
-const token = config.get('token')
 const ffmetadata = require('ffmetadata')
 const fs = require('fs')
 const getYoutubeId = require('get-youtube-id')
@@ -12,11 +10,9 @@ const chalk = require('chalk')
 const readLastLines = require('read-last-lines');
 const downloadAudio = require('./modules/youtubeDownloader')
 const helper = require('./modules/helper')
-// const logger = require('./modules/logger')
 const deleteTempFiles = require('./modules/deleteTempFiles')
 
-const linksArray = fs.readFileSync(`${ __dirname }/../misc/list.txt`).toString().split("\n");
-
+const token = config.get('token')
 helper.logStart()
 
 const bot = new TelegramBot(token, {
@@ -29,16 +25,15 @@ let typeFlag
 
 const admins = config.get('admins')
 const channelId = config.get('channel_id')
+const linksPath = `${ __dirname }/../misc/list.txt`
 
-bot.on('polling_error', (msg) => {
-  console.log(msg);
+bot.on('polling_error', (err) => {
+  console.log(err.response.body.description)
 })
 
 // Messages logger
 bot.on('message', msg => {
-  const event = `${ msg.from.username }: ${ msg.text }`
-  console.log(chalk.cyan(`[${ helper.getDate() }] ${ event }`))
-  // logger.log(event)
+  console.log(chalk.cyan(`[${ helper.getDate() }] ${ helper.getEvent(msg) }`))
 })
 
 bot.onText(/\/start/, msg => {
@@ -69,8 +64,12 @@ bot.onText(/\/logs( \d+)?/, (msg, match) => {
 })
 
 bot.onText(/\/random/, msg => {
-  const item = linksArray[Math.floor(Math.random() * linksArray.length)]
-  bot.sendMessage(helper.getChatId(msg), item)
+  fs.readFile(linksPath, 'utf-8', (err, data) => {
+    if (err) throw err
+    const links = data.split('\n')
+    const item = links[Math.floor(Math.random() * links.length)]
+    bot.sendMessage(helper.getChatId(msg), item)
+  })
 })
 
 bot.onText(/\/dl/, msg => {
@@ -80,6 +79,13 @@ bot.onText(/\/dl/, msg => {
   bot.sendMessage(chatId, helper.ask_link_message, {
     parse_mode: 'Markdown'
   })
+})
+
+bot.onText(/\/state/, msg => {
+
+  const chatId = helper.getChatId(msg)
+
+  bot.sendMessage(chatId, `${ videoId } : ${ typeFlag }`)
 })
 
 bot.onText(/https?(.+)/, msg => {
@@ -103,9 +109,7 @@ bot.onText(/https?(.+)/, msg => {
 
 bot.on('callback_query', query => {
 
-  const event = `${ query.message.chat.username }: ${ query.data } (callback_query)`
-  console.log(chalk.cyan(`[${ helper.getDate() }] ${ event }`))
-  // logger.log(event)
+  console.log(chalk.cyan(`[${ helper.getDate() }] ${ helper.getEvent(query) }`))
 
   const chatId = helper.getChatId(query)
 
@@ -154,10 +158,21 @@ bot.on('callback_query', query => {
       break;
 
     case 'gachi':
-      bot.sendMessage(chatId, helper.send_gachi_tags_message, {
-        parse_mode: 'Markdown'
+      fs.readFile(linksPath, 'utf-8', (err, data) => {
+        if (err) throw err
+        const links = data.split('\n')
+        const url = `https://www.youtube.com/watch?v=${ videoId }`
+        if (links.includes(url)) {
+          bot.deleteMessage(chatId, query.message.message_id)
+          bot.sendMessage(chatId, helper.entry_exists_message)
+          videoId = undefined
+        } else {
+          bot.sendMessage(chatId, helper.send_gachi_tags_message, {
+            parse_mode: 'Markdown'
+          })
+          typeFlag = 'gachi'
+        }
       })
-      typeFlag = 'gachi'
       break;
 
     default:
@@ -169,7 +184,6 @@ bot.onText(/^(.*) (-|–) (.*)$/, (msg, match) => {
 
   const botChatId = helper.getChatId(msg)
 
-  
   if (msg.text.includes('/')) {
     bot.sendMessage(botChatId, `Metadata cannot contain */* symbol. Try again.`)
     throw new Error('Unallowed character in metadata')
@@ -214,7 +228,7 @@ bot.onText(/^(.*) (-|–) (.*)$/, (msg, match) => {
 
         const oldPath = `./tmp/${ videoId }.mp3`
         const newPath = `./tmp/${ artist } - ${ title }.mp3`
-        
+
         const artwork = `./tmp/${ videoId }.jpg`
 
         fs.rename(oldPath, newPath, () => {
@@ -227,7 +241,7 @@ bot.onText(/^(.*) (-|–) (.*)$/, (msg, match) => {
 
             let audioChatId
             if (typeFlag === 'gachi') audioChatId = channelId
-            audioChatId = msg.chat.id
+            else audioChatId = msg.chat.id
 
             bot.sendMessage(audioChatId, url)
               .then(() => {
@@ -240,18 +254,17 @@ bot.onText(/^(.*) (-|–) (.*)$/, (msg, match) => {
                     })
                   })
                   .then(() => {
-
                     deleteTempFiles(newPath, artwork)
                     console.log(`[${ helper.getDate() }] Audio is delivered.`)
                     bot.deleteMessage(botChatId, msg.message_id)
                     bot.deleteMessage(botChatId, msg.message_id - 1)
                     bot.deleteMessage(botChatId, msg.message_id - 2)
                     bot.deleteMessage(botChatId, msg.message_id + 1)
-
                   })
-              }).then(() => {
 
+              }).then(() => {
                 if (typeFlag === 'gachi') {
+                  fs.appendFileSync(linksPath, `${ url }\n`)
                   bot.sendMessage(botChatId, 'Done.')
                 }
                 videoId = undefined
