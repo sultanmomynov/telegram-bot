@@ -52,8 +52,7 @@ bot.onText(/\/logs( \d+)?/, (msg, match) => {
 
   if (admins.includes(msg.from.id)) {
     let numOfLines
-    if (match[1] !== undefined) numOfLines = match[1]
-    numOfLines = 10
+    match[1] === undefined ? numOfLines = 10 : numOfLines = match[1]
     readLastLines.read(`${ __dirname }/logs`, numOfLines)
       .then((lines) => {
         bot.sendMessage(chatId, `Showing last ${ numOfLines } log lines:\n\n${ lines }`, {
