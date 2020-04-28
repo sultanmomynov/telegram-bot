@@ -11,6 +11,7 @@ const readLastLines = require('read-last-lines');
 const downloadAudio = require('./modules/youtubeDownloader')
 const helper = require('./modules/helper')
 const deleteTempFiles = require('./modules/deleteTempFiles')
+const deleteMsgs = require('./modules/deleteMessages')
 
 const token = config.get('token')
 helper.logStart()
@@ -26,6 +27,10 @@ let typeFlag
 const admins = config.get('admins')
 const channelId = config.get('channel_id')
 const linksPath = `${ __dirname }/../misc/list.txt`
+
+const YES_FLOW = 'yes'
+const NO_FLOW = 'no'
+const GACHI_FLOW = 'gachi'
 
 bot.on('polling_error', (err) => {
   console.log(err.response.body.description)
@@ -53,11 +58,13 @@ bot.onText(/\/logs( \d+)?/, (msg, match) => {
         bot.sendMessage(chatId, `Showing last ${ numOfLines } log lines:\n\n${ lines }`, {
           disable_web_page_preview: true
         })
-          .catch(err => {
-            console.log(err.response.body.description)
-            bot.sendMessage(chatId, `*ERROR* ${ err.response.body.description }`, {
-              parse_mode: 'Markdown'
-            })
+          .catch(() => {
+            console.log(`[${ helper.getDate() }] Sending logfile...`)
+            bot.sendDocument(chatId, fs.createReadStream(`${ __dirname }/logs`))
+              .catch(err => console.log('ERROR: ', err))
+              .then(() => {
+                console.log(`[${ helper.getDate() }] Logfile is sent.`)
+              })
           })
       })
   }
@@ -115,7 +122,7 @@ bot.on('callback_query', query => {
 
   switch (query.data) {
 
-    case 'no': {
+    case NO_FLOW: {
       const url = `https://www.youtube.com/watch?v=${ videoId }`
       bot.sendMessage(chatId, helper.working_message)
 
@@ -124,6 +131,8 @@ bot.on('callback_query', query => {
 
           const path = `./tmp/${ videoId }.mp3`
           const attach = `./tmp/${ videoId }.jpg`
+
+          console.log(`[${ helper.getDate() }] Sending audio...`);
 
           bot.sendAudio(chatId, fs.createReadStream(path))
             .catch((err) => {
@@ -134,9 +143,8 @@ bot.on('callback_query', query => {
             })
             .then(() => {
               deleteTempFiles(path, attach)
-              bot.deleteMessage(chatId, query.message.message_id)
-              bot.deleteMessage(chatId, query.message.message_id + 1)
-              console.log(`[${ helper.getDate() }] Audio is delivered.`)
+              deleteMsgs(NO_FLOW, bot, chatId, query)
+              console.log(`[${ helper.getDate() }] Audio is sent.`)
               videoId = undefined
               typeFlag = undefined
             })
@@ -146,18 +154,18 @@ bot.on('callback_query', query => {
           bot.sendMessage(chatId, err.stderr)
         })
 
-      typeFlag = 'normal'
+      typeFlag = YES_FLOW
       break;
     }
 
-    case 'yes':
+    case YES_FLOW:
       bot.sendMessage(chatId, helper.send_tags_message, {
         parse_mode: 'Markdown'
       })
-      typeFlag = 'normal'
+      typeFlag = YES_FLOW
       break;
 
-    case 'gachi':
+    case GACHI_FLOW:
       fs.readFile(linksPath, 'utf-8', (err, data) => {
         if (err) throw err
         const links = data.split('\n')
@@ -170,7 +178,7 @@ bot.on('callback_query', query => {
           bot.sendMessage(chatId, helper.send_gachi_tags_message, {
             parse_mode: 'Markdown'
           })
-          typeFlag = 'gachi'
+          typeFlag = GACHI_FLOW
         }
       })
       break;
@@ -210,7 +218,7 @@ bot.onText(/^(.*) (-|–) (.*)$/, (msg, match) => {
     const title = match[3]
     let metadata
 
-    if (typeFlag === 'gachi') {
+    if (typeFlag === GACHI_FLOW) {
       metadata = {
         artist: `♂ ${ artist }`,
         title: `${ title } ♂`,
@@ -240,35 +248,70 @@ bot.onText(/^(.*) (-|–) (.*)$/, (msg, match) => {
             console.log(`[${ helper.getDate() }] Sending audio...`);
 
             let audioChatId
-            if (typeFlag === 'gachi') audioChatId = channelId
+            if (typeFlag === GACHI_FLOW) audioChatId = channelId
             else audioChatId = msg.chat.id
 
             bot.sendMessage(audioChatId, url)
               .then(() => {
 
-                bot.sendAudio(audioChatId, fs.createReadStream(newPath))
-                  .catch((error) => {
+                async function sendAudio() {
+                  try {
+                    console.log(typeFlag)
+                    await bot.sendAudio(audioChatId, fs.createReadStream(newPath))
+                    deleteTempFiles(newPath, artwork)
+                    console.log(`[${ helper.getDate() }] Audio is sent.`)
+
+                    if (typeFlag === GACHI_FLOW) {
+                      deleteMsgs(GACHI_FLOW, bot, botChatId, msg)
+                    }
+
+                    if (typeFlag === YES_FLOW) {
+                      deleteMsgs(YES_FLOW, bot, botChatId, msg)
+                    }
+
+                  } catch (error) {
                     console.log(error)
                     bot.sendMessage(audioChatId, `*ERROR* ${ error.response.body.description }`, {
                       parse_mode: 'Markdown'
                     })
-                  })
-                  .then(() => {
-                    deleteTempFiles(newPath, artwork)
-                    console.log(`[${ helper.getDate() }] Audio is delivered.`)
-                    bot.deleteMessage(botChatId, msg.message_id)
-                    bot.deleteMessage(botChatId, msg.message_id - 1)
-                    bot.deleteMessage(botChatId, msg.message_id - 2)
-                    bot.deleteMessage(botChatId, msg.message_id + 1)
-                  })
-
-              }).then(() => {
-                if (typeFlag === 'gachi') {
-                  fs.appendFileSync(linksPath, `${ url }\n`)
-                  bot.sendMessage(botChatId, 'Done.')
+                  }
                 }
-                videoId = undefined
-                typeFlag = undefined
+
+                sendAudio().then(() => {
+                  if (typeFlag === GACHI_FLOW) {
+                    fs.appendFileSync(linksPath, `${ url }\n`)
+                    bot.sendMessage(botChatId, 'Done.')
+                  }
+                  videoId = undefined
+                  typeFlag = undefined
+                })
+
+                //   bot.sendAudio(audioChatId, fs.createReadStream(newPath))
+                //     .catch((error) => {
+                //       console.log(error)
+                //       bot.sendMessage(audioChatId, `*ERROR* ${ error.response.body.description }`, {
+                //         parse_mode: 'Markdown'
+                //       })
+                //     })
+                //     .then(() => {
+                //       deleteTempFiles(newPath, artwork)
+                //       console.log(`[${ helper.getDate() }] Audio is sent.`)
+                //       if (typeFlag === GACHI_FLOW) {
+                //         deleteMsgs(GACHI_FLOW, bot, botChatId, msg)
+                //       }
+                //       if (typeFlag === YES_FLOW) {
+                //         deleteMsgs(YES_FLOW, bot, botChatId, msg)
+                //       }
+
+                //     })
+
+                // }).then(() => {
+                //   if (typeFlag === GACHI_FLOW) {
+                //     fs.appendFileSync(linksPath, `${ url }\n`)
+                //     bot.sendMessage(botChatId, 'Done.')
+                //   }
+                // videoId = undefined
+                // typeFlag = undefined
               })
           })
         })
