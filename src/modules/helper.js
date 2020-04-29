@@ -20,7 +20,7 @@ module.exports = {
   ask_link_message: `Give me a YouTube link.\nYou can write @vid to find video\nExample: @vid *Coldplay*`,
   ask_tags_message: `Need custom meta tags?`,
   send_tags_message: `Send me song metadata.\nFormat: *Artist* - *Title*\nExample: *Dua Lipa - New Rules*`,
-  send_gachi_tags_message: `Hey buddy, i think you got the wrong door the leather club is two blocks down\n\nSend me metadata (format: _artist - title_)\n\n*Requirements:*\n1. Don't use *♂* in metadata.\n2. Be creative gachiBASS\n\n*GOOD*\n_БИ-2 - Полковнику никто не fisting ass_\n\n*BAD*\n_♂ БИ-2 - Полковнику никто не fisting ass ♂_`,
+  send_gachi_tags_message: `Hey buddy, i think you got the wrong door the leather club is two blocks down\n\nSend me metadata (format: _artist - title_)\n\n*Requirements:*\n1. Don't use *♂* in metadata.\n2. Be creative gachiBASS\n\n*GOOD*\n_БИ-2 - Полковнику никто не пишет_\n\n*BAD*\n_♂ БИ-2 - Полковнику никто не fisting ass ♂_`,
   entry_exists_message: 'This gachi already exists in group',
   greet(message) {
     const greetings = `Hello, *${ message.from.first_name }*\nI can convert YouTube videos to audio\nJust write */dl*`
