@@ -29,7 +29,7 @@ module.exports = function downloadFile(url) {
         // console.group()
         // console.log(out.join('\n'))
         // console.groupEnd()
-        console.log(`[${ helper.getDate() }] Download finished.`)
+        console.log(`[${ helper.getDate() }] Audio is downloaded.`)
         resolve();
       }
     })
