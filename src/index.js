@@ -3,7 +3,6 @@ process.env.NTBA_FIX_350 = 1;
 // Requirements
 const TelegramBot = require('node-telegram-bot-api')
 const config = require('config')
-const ffmetadata = require('ffmetadata')
 const fs = require('fs')
 const getYoutubeId = require('get-youtube-id')
 const chalk = require('chalk')
@@ -12,6 +11,7 @@ const downloadAudio = require('./modules/youtubeDownloader')
 const helper = require('./modules/helper')
 const deleteTempFiles = require('./modules/deleteTempFiles')
 const deleteMsgs = require('./modules/deleteMessages')
+const applyMetadata = require('./modules/applyMetadata')
 
 const TOKEN = config.get('token')
 helper.logStart()
@@ -21,8 +21,7 @@ const bot = new TelegramBot(TOKEN, {
   filepath: false
 })
 
-let videoId
-let type
+let videoId, type
 
 const admins = config.get('admins')
 const channelId = config.get('channel_id')
@@ -49,49 +48,41 @@ bot.onText(/\/start/, msg => {
 
 bot.onText(/\/logs( \d+)?/, (msg, match) => {
   const chatId = helper.getChatId(msg)
+  if (!admins.includes(msg.from.id)) return
 
-  if (admins.includes(msg.from.id)) {
-    let numOfLines
-    match[1] === undefined ? numOfLines = 10 : numOfLines = match[1]
-    readLastLines.read(`${ __dirname }/logs`, numOfLines)
-      .then((lines) => {
-        bot.sendMessage(chatId, `Showing last ${ numOfLines } log lines:\n\n${ lines }`, {
-          disable_web_page_preview: true
-        })
-          .catch(() => {
-            console.log(`[${ helper.getDate() }] Sending logfile...`)
-            bot.sendDocument(chatId, fs.createReadStream(`${ __dirname }/logs`))
-              .catch(err => console.log('ERROR: ', err))
-              .then(() => {
-                console.log(`[${ helper.getDate() }] Logfile is sent.`)
-              })
-          })
+  const numOfLines = match[1] === undefined ? 10 : match[1]
+  readLastLines.read(`${ __dirname }/logs`, numOfLines)
+    .then((lines) => {
+      bot.sendMessage(chatId, `Showing last ${ numOfLines } log lines:\n\n${ lines }`, {
+        disable_web_page_preview: true
       })
-  }
+        .catch(() => {
+          console.log(`[${ helper.getDate() }] Sending logfile...`)
+          bot.sendDocument(chatId, fs.createReadStream(`${ __dirname }/logs`))
+            .catch(err => console.log('ERROR: ', err))
+            .then(() => {
+              console.log(`[${ helper.getDate() }] Logfile is sent.`)
+            })
+        })
+    })
 })
 
 bot.onText(/\/random/, msg => {
-  fs.readFile(linksPath, 'utf-8', (err, data) => {
-    if (err) throw err
-    const links = data.split('\n')
-    const item = links[Math.floor(Math.random() * links.length)]
-    bot.sendMessage(helper.getChatId(msg), item)
-  })
+  const data = fs.readFileSync(linksPath, 'utf-8')
+  const links = data.split('\n')
+  const item = links[Math.floor(Math.random() * links.length)]
+  bot.sendMessage(helper.getChatId(msg), item)
 })
 
 bot.onText(/\/dl/, msg => {
-
   const chatId = helper.getChatId(msg)
-
   bot.sendMessage(chatId, helper.ask_link_message, {
     parse_mode: 'Markdown'
   })
 })
 
 bot.onText(/\/state/, msg => {
-
   const chatId = helper.getChatId(msg)
-
   bot.sendMessage(chatId, `${ videoId } : ${ type }`)
 })
 
@@ -111,49 +102,36 @@ bot.onText(/https?(.+)/, msg => {
       }
     })
   }
-
 })
 
 bot.on('callback_query', query => {
 
+  const chatId = helper.getChatId(query)
   console.log(chalk.cyan(`[${ helper.getDate() }] ${ helper.getEvent(query) }`))
 
-  const chatId = helper.getChatId(query)
-
   switch (query.data) {
-
     case NO_FLOW: {
-      const url = `https://www.youtube.com/watch?v=${ videoId }`
-      bot.sendMessage(chatId, helper.working_message)
-
-      downloadAudio(url)
-        .then(() => {
-
+      (async function main() {
+        try {
+          const url = `https://www.youtube.com/watch?v=${ videoId }`
+          await bot.sendMessage(chatId, helper.working_message)
+          await downloadAudio(url)
           const path = `./tmp/${ videoId }.mp3`
           const attach = `./tmp/${ videoId }.jpg`
-
-          console.log(`[${ helper.getDate() }] Sending audio...`);
-
-          bot.sendAudio(chatId, fs.createReadStream(path))
-            .catch((err) => {
-              console.log(err)
-              bot.sendMessage(chatId, `*ERROR* ${ err.response.body.description }`, {
-                parse_mode: 'Markdown'
-              })
-            })
-            .then(() => {
-              deleteTempFiles(path, attach)
-              deleteMsgs(NO_FLOW, bot, chatId, query)
-              console.log(`[${ helper.getDate() }] Audio is sent.`)
-              videoId = undefined
-              type = undefined
-            })
-        })
-        .catch((err) => {
-          console.log(err)
-          bot.sendMessage(chatId, err.stderr)
-        })
-      // type = NO_FLOW
+          console.log(`[${ helper.getDate() }] Sending audio...`)
+          await bot.sendAudio(chatId, fs.createReadStream(path))
+          deleteTempFiles(path, attach)
+          await deleteMsgs(bot, chatId, query, NO_FLOW)
+          console.log(`[${ helper.getDate() }] Audio is sent.`)
+          videoId = undefined
+          type = undefined
+        } catch (e) {
+          console.log("ERROR", e)
+          bot.sendMessage(chatId, 'Error occured. Please, try again.', {
+            parse_mode: 'Markdown'
+          })
+        }
+      })()
       break
     }
 
@@ -161,26 +139,25 @@ bot.on('callback_query', query => {
       bot.sendMessage(chatId, helper.send_tags_message, {
         parse_mode: 'Markdown'
       })
-      // type = YES_FLOW
+      type = YES_FLOW
       break
 
-    case GACHI_FLOW:
-      fs.readFile(linksPath, 'utf-8', (err, data) => {
-        if (err) throw err
-        const links = data.split('\n')
-        const url = `https://www.youtube.com/watch?v=${ videoId }`
-        if (links.includes(url)) {
-          bot.deleteMessage(chatId, query.message.message_id)
-          bot.sendMessage(chatId, helper.entry_exists_message)
-          videoId = undefined
-        } else {
-          bot.sendMessage(chatId, helper.send_gachi_tags_message, {
-            parse_mode: 'Markdown'
-          })
-          type = GACHI_FLOW
-        }
-      })
+    case GACHI_FLOW: {
+      const data = fs.readFileSync(linksPath, 'utf-8')
+      const links = data.split('\n')
+      const url = `https://www.youtube.com/watch?v=${ videoId }`
+      if (links.includes(url)) {
+        bot.deleteMessage(chatId, query.message.message_id)
+        bot.sendMessage(chatId, helper.entry_exists_message)
+        videoId = undefined
+      } else {
+        bot.sendMessage(chatId, helper.send_gachi_tags_message, {
+          parse_mode: 'Markdown'
+        })
+        type = GACHI_FLOW
+      }
       break
+    }
 
     default:
     // nothing
@@ -188,108 +165,74 @@ bot.on('callback_query', query => {
 })
 
 bot.onText(/^(.*) (-|–) (.*)$/, (msg, match) => {
-
   const botChatId = helper.getChatId(msg)
 
   if (msg.text.includes('/')) {
-    bot.sendMessage(botChatId, `Metadata cannot contain */* symbol. Try again.`)
-    throw new Error('Unallowed character in metadata')
+    bot.sendMessage(botChatId, `Don't use *"/"* in metadata.`, {
+      parse_mode: 'Markdown'
+    })
+    console.log(`[${ helper.getDate() }] ERROR: Unallowed character in metadata`);
+    return
   }
 
   if (msg.text.includes('♂')) {
-    bot.sendMessage(botChatId, `Don't use *♂* in metadata.`, {
+    bot.sendMessage(botChatId, `Don't use *"♂"* in metadata.`, {
       parse_mode: 'Markdown'
     })
-    throw new Error('Unallowed character in metadata')
+    console.log(`[${ helper.getDate() }] ERROR: Unallowed character in metadata`);
+    return
   }
 
   if (videoId === undefined) {
-
     bot.sendMessage(botChatId, 'Provide a link first')
-    console.log(`[${ helper.getDate() }] No link`)
+    console.log(`[${ helper.getDate() }] ERROR: No link provided`)
+    return
+  }
 
-  } else {
-    bot.sendMessage(botChatId, helper.working_message)
+  (async function main() {
+    try {
+      await bot.sendMessage(botChatId, helper.working_message)
+      const url = `https://www.youtube.com/watch?v=${ videoId }`
+      const artist = match[1]
+      const title = match[3]
 
-    const url = `https://www.youtube.com/watch?v=${ videoId }`
-
-    const artist = match[1]
-    const title = match[3]
-    let metadata
-
-    if (type === GACHI_FLOW) {
-      metadata = {
+      const GACHI_METADATA = {
         artist: `♂ ${ artist }`,
         title: `${ title } ♂`,
         album: 'Gachimuchi'
       }
-    } else {
-      metadata = {
+
+      const NORMAL_METADATA = {
         artist,
         title
       }
+
+      const metadata = type === GACHI_FLOW ? GACHI_METADATA : NORMAL_METADATA
+      await downloadAudio(url)
+      const oldPath = `./tmp/${ videoId }.mp3`
+      const newPath = `./tmp/${ artist } - ${ title }.mp3`
+      const artwork = `./tmp/${ videoId }.jpg`
+      fs.renameSync(oldPath, newPath)
+
+      const options = { attachments: [artwork] }
+      await applyMetadata(newPath, metadata, options)
+      console.log(`[${ helper.getDate() }] Sending audio...`);
+      const audioChatId = type === GACHI_FLOW ? channelId : msg.chat.id
+      if (type === GACHI_FLOW) await bot.sendMessage(audioChatId, url)
+
+      await bot.sendAudio(audioChatId, fs.createReadStream(newPath))
+      deleteTempFiles(newPath, artwork)
+      console.log(`[${ helper.getDate() }] Audio is sent.`)
+      if (type === GACHI_FLOW) {
+        fs.appendFileSync(linksPath, `${ url }\n`)
+        await bot.sendMessage(botChatId, 'Done.')
+      }
+      await deleteMsgs(bot, botChatId, msg)
+      videoId = undefined
+      type = undefined
+    } catch (e) {
+      console.log("ERROR", e)
+      bot.sendMessage(botChatId, 'Error occured. Please, try again.')
     }
-
-    downloadAudio(url)
-      .then(() => {
-
-        const oldPath = `./tmp/${ videoId }.mp3`
-        const newPath = `./tmp/${ artist } - ${ title }.mp3`
-
-        const artwork = `./tmp/${ videoId }.jpg`
-
-        fs.rename(oldPath, newPath, () => {
-
-          const options = { attachments: [artwork] }
-
-          ffmetadata.write(newPath, metadata, options, (err) => {
-            if (err) throw err
-            console.log(`[${ helper.getDate() }] Sending audio...`);
-
-            let audioChatId
-            if (type === GACHI_FLOW) audioChatId = channelId
-            else audioChatId = msg.chat.id
-
-            bot.sendMessage(audioChatId, url)
-              .then(() => {
-
-                async function sendAudio() {
-                  try {
-                    await bot.sendAudio(audioChatId, fs.createReadStream(newPath))
-                    deleteTempFiles(newPath, artwork)
-                    console.log(`[${ helper.getDate() }] Audio is sent.`)
-
-                    if (type === GACHI_FLOW) {
-                      deleteMsgs(GACHI_FLOW, bot, botChatId, msg)
-                    }
-
-                    if (type === YES_FLOW) {
-                      deleteMsgs(YES_FLOW, bot, botChatId, msg)
-                    }
-
-                  } catch (error) {
-                    console.log(error)
-                    bot.sendMessage(audioChatId, `*ERROR* ${ error.response.body.description }`, {
-                      parse_mode: 'Markdown'
-                    })
-                  }
-                }
-
-                sendAudio().then(() => {
-                  if (type === GACHI_FLOW) {
-                    fs.appendFileSync(linksPath, `${ url }\n`)
-                    bot.sendMessage(botChatId, 'Done.')
-                  }
-                  videoId = undefined
-                  type = undefined
-                })
-              })
-          })
-        })
-      })
-      .catch((e) => {
-        console.log(e)
-        bot.sendMessage(botChatId, e)
-      })
-  }
+  })()
 })

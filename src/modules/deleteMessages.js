@@ -1,26 +1,15 @@
-module.exports = async function deleteMsgs(type, bot, chatId, msg) {
+module.exports = async function deleteMsgs(bot, chatId, msg, type = null) {
   switch (type) {
-    case 'yes':
-      await bot.deleteMessage(chatId, msg.message_id - 2)
-      await bot.deleteMessage(chatId, msg.message_id - 1)
-      await bot.deleteMessage(chatId, msg.message_id)
-      await bot.deleteMessage(chatId, msg.message_id + 1)
-      await bot.deleteMessage(chatId, msg.message_id + 2)
-      break
-
     case 'no':
       await bot.deleteMessage(chatId, msg.message.message_id)
       await bot.deleteMessage(chatId, msg.message.message_id + 1)
       break
 
-    case 'gachi':
+    default:
       await bot.deleteMessage(chatId, msg.message_id - 2)
       await bot.deleteMessage(chatId, msg.message_id - 1)
       await bot.deleteMessage(chatId, msg.message_id)
       await bot.deleteMessage(chatId, msg.message_id + 1)
       break
-
-    default:
-    // nothing
   }
 }
