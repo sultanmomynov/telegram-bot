@@ -1,17 +1,17 @@
 process.env.NTBA_FIX_319 = 1;
 process.env.NTBA_FIX_350 = 1;
-// Requirements
+
 const TelegramBot = require('node-telegram-bot-api')
 const config = require('config')
 const fs = require('fs')
 const getYoutubeId = require('get-youtube-id')
 const chalk = require('chalk')
-const readLastLines = require('read-last-lines');
 const downloadAudio = require('./modules/youtubeDownloader')
 const helper = require('./modules/helper')
 const deleteTempFiles = require('./modules/deleteTempFiles')
 const deleteMsgs = require('./modules/deleteMessages')
 const applyMetadata = require('./modules/applyMetadata')
+const logger = require('./modules/logger')
 
 const TOKEN = config.get('token')
 helper.logStart()
@@ -32,39 +32,29 @@ const NO_FLOW = 'no'
 const GACHI_FLOW = 'gachi'
 
 bot.on('polling_error', (err) => {
-  console.log(err.response.body.description)
+  err.response === undefined ? console.log(err) : console.log(err.response.body.description)
 })
 
 // Messages logger
 bot.on('message', msg => {
-  console.log(chalk.cyan(`[${ helper.getDate() }] ${ helper.getEvent(msg) }`))
+  logger.logUserMessage(helper.getEvent(msg))
+  console.log(`[${ helper.getDate() }] ${ helper.getEvent(msg) }`)
+})
+
+bot.onText(/\/ulogs( \d+)?/, (msg, match) => {
+  if (!admins.includes(msg.from.id)) return
+  logger.sendLogs(bot, msg, match, 'userlogs')
+})
+
+bot.onText(/\/logs( \d+)?/, (msg, match) => {
+  if (!admins.includes(msg.from.id)) return
+  logger.sendLogs(bot, msg, match, 'logs')
 })
 
 bot.onText(/\/start/, msg => {
   bot.sendMessage(helper.getChatId(msg), helper.greet(msg), {
     parse_mode: 'Markdown'
   })
-})
-
-bot.onText(/\/logs( \d+)?/, (msg, match) => {
-  const chatId = helper.getChatId(msg)
-  if (!admins.includes(msg.from.id)) return
-
-  const numOfLines = match[1] === undefined ? 10 : match[1]
-  readLastLines.read(`${ __dirname }/logs`, numOfLines)
-    .then((lines) => {
-      bot.sendMessage(chatId, `Showing last ${ numOfLines } log lines:\n\n${ lines }`, {
-        disable_web_page_preview: true
-      })
-        .catch(() => {
-          console.log(`[${ helper.getDate() }] Sending logfile...`)
-          bot.sendDocument(chatId, fs.createReadStream(`${ __dirname }/logs`))
-            .catch(err => console.log('ERROR: ', err))
-            .then(() => {
-              console.log(`[${ helper.getDate() }] Logfile is sent.`)
-            })
-        })
-    })
 })
 
 bot.onText(/\/random/, msg => {
